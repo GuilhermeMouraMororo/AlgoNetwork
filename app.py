@@ -23,6 +23,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+database_url = os.environ.get('DATABASE_URL', 'sqlite:///chat.db')
+if database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 
 # Create upload directories
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'images'), exist_ok=True)
@@ -74,7 +78,41 @@ def send_verification_email(email, code):
         # Set socket timeout to prevent hanging
         socket.setdefaulttimeout(10)
         
-        # Create message
+        # Create message@app.route('/', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated and current_user.is_verified:
+        return redirect(url_for('chat_room'))
+    
+    if request.method == 'POST':
+        email = request.form.get('email')
+        
+        if not email:
+            flash('Please enter your email address.', 'error')
+            return login_html.format(flash_messages=get_flash_messages())
+        
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(email=email)
+            db.session.add(user)
+        
+        verification_code = generate_verification_code()
+        user.verification_code = verification_code
+        user.is_verified = False
+        db.session.commit()
+        
+        # Try to send email, but don't wait too long
+        email_sent = send_verification_email(email, verification_code)
+        
+        if email_sent:
+            flash('Verification code sent to your email!', 'success')
+        else:
+            flash(f'Email may not have been sent. Your code is: {verification_code}', 'warning')
+            print(f"DEBUG - Verification code for {email}: {verification_code}")
+        
+        session['verify_email'] = email
+        return redirect(url_for('verify'))
+    
+    return login_html.format(flash_messages=get_flash_messages())
         msg = MimeMultipart()
         msg['From'] = email_user
         msg['To'] = email
@@ -332,10 +370,13 @@ def login():
         user.is_verified = False
         db.session.commit()
         
-        if send_verification_email(email, verification_code):
+        # Try to send email, but don't wait too long
+        email_sent = send_verification_email(email, verification_code)
+        
+        if email_sent:
             flash('Verification code sent to your email!', 'success')
         else:
-            flash('Failed to send email. Check console for code.', 'warning')
+            flash(f'Email may not have been sent. Your code is: {verification_code}', 'warning')
             print(f"DEBUG - Verification code for {email}: {verification_code}")
         
         session['verify_email'] = email
