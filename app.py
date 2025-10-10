@@ -4,8 +4,8 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 import os
 import secrets
 import smtplib
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import uuid
 from functools import wraps
@@ -77,7 +77,7 @@ def send_verification_email(email, code):
         socket.setdefaulttimeout(10)
         
         # Create message
-        msg = MimeMultipart()
+        msg = MIMEMultipart()
         msg['From'] = email_user
         msg['To'] = email
         msg['Subject'] = 'Chat App - Verification Code'
@@ -85,7 +85,7 @@ def send_verification_email(email, code):
         # Simple text email (faster than HTML)
         body = f"Your Chat App verification code is: {code}\n\nThis code will expire in 10 minutes."
         
-        msg.attach(MimeText(body, 'plain'))
+        msg.attach(MIMEText(body, 'plain'))
         
         # Send email with timeout
         start_time = time.time()
