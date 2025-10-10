@@ -8,10 +8,23 @@ class ChatApp {
         this.fileInfo = document.getElementById('file-info');
         this.usersList = document.getElementById('users-list');
         
+        this.lastMessageId = 0;
+        this.isNearBottom = true;
         this.initEventListeners();
         this.loadMessages();
         this.loadUsers();
         this.startPolling();
+        this.setupScrollHandler();
+    }
+    
+    setupScrollHandler() {
+        this.messagesContainer.addEventListener('scroll', () => {
+            const threshold = 100; // pixels from bottom
+            const position = this.messagesContainer.scrollTop + this.messagesContainer.clientHeight;
+            const height = this.messagesContainer.scrollHeight;
+            
+            this.isNearBottom = (height - position) <= threshold;
+        });
     }
     
     initEventListeners() {
@@ -75,9 +88,27 @@ class ChatApp {
         try {
             const response = await fetch('/api/messages');
             const messages = await response.json();
-            this.messagesContainer.innerHTML = '';
-            messages.forEach(message => this.addMessage(message));
-            this.scrollToBottom();
+            
+            // Only update if there are new messages
+            const latestMessageId = messages.length > 0 ? Math.max(...messages.map(m => m.id)) : 0;
+            if (latestMessageId > this.lastMessageId) {
+                const previousScroll = this.messagesContainer.scrollTop;
+                const previousHeight = this.messagesContainer.scrollHeight;
+                
+                this.messagesContainer.innerHTML = '';
+                messages.forEach(message => this.addMessage(message));
+                
+                this.lastMessageId = latestMessageId;
+                
+                // Only scroll to bottom if user was near bottom before update
+                if (this.isNearBottom) {
+                    this.scrollToBottom();
+                } else {
+                    // Maintain scroll position relative to content
+                    const newHeight = this.messagesContainer.scrollHeight;
+                    this.messagesContainer.scrollTop = previousScroll + (newHeight - previousHeight);
+                }
+            }
         } catch (error) {
             console.error('Error loading messages:', error);
         }
