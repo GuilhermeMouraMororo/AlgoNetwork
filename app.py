@@ -10,6 +10,8 @@ from datetime import datetime
 import uuid
 from functools import wraps
 from dotenv import load_dotenv
+import socket
+import time
 
 
 load_dotenv()  # This loads the .env file
@@ -64,91 +66,42 @@ def send_verification_email(email, code):
         email_user = os.environ.get('EMAIL_USER')
         email_password = os.environ.get('EMAIL_PASSWORD')
         
-        # If email credentials aren't set, use a simple SMTP server for testing
+        # If email credentials aren't set, use console logging
         if not all([email_user, email_password]):
             print(f"Email credentials not set. Verification code for {email}: {code}")
-            print("To send actual emails, set EMAIL_USER and EMAIL_PASSWORD environment variables")
             return True
         
+        # Set socket timeout to prevent hanging
+        socket.setdefaulttimeout(10)
+        
         # Create message
-        msg = MIMEMultipart()
+        msg = MimeMultipart()
         msg['From'] = email_user
         msg['To'] = email
         msg['Subject'] = 'Chat App - Verification Code'
         
-        # Create HTML email body
-        body = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <style>
-                body {{
-                    font-family: Arial, sans-serif;
-                    line-height: 1.6;
-                    color: #333;
-                    max-width: 600px;
-                    margin: 0 auto;
-                    padding: 20px;
-                }}
-                .header {{
-                    background-color: #007bff;
-                    color: white;
-                    padding: 10px 0;
-                    text-align: center;
-                    border-radius: 5px;
-                }}
-                .code {{
-                    font-size: 24px;
-                    font-weight: bold;
-                    text-align: center;
-                    margin: 20px 0;
-                    padding: 10px;
-                    background-color: #f8f9fa;
-                    border-radius: 5px;
-                    letter-spacing: 2px;
-                }}
-                .footer {{
-                    margin-top: 20px;
-                    font-size: 0.9em;
-                    color: #6c757d;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>Chat App Verification</h1>
-            </div>
-            
-            <p>Hello,</p>
-            
-            <p>Thank you for signing up for our chat app! Please use the following verification code to complete your registration:</p>
-            
-            <div class="code">{code}</div>
-            
-            <p>Enter this code in the verification page to access the chat room.</p>
-            
-            <p><strong>Note:</strong> This code will expire in 10 minutes.</p>
-            
-            <div class="footer">
-                <p>If you didn't request this verification, please ignore this email.</p>
-                <p>Best regards,<br>Chat App Team</p>
-            </div>
-        </body>
-        </html>
-        """
+        # Simple text email (faster than HTML)
+        body = f"Your Chat App verification code is: {code}\n\nThis code will expire in 10 minutes."
         
-        msg.attach(MIMEText(body, 'html'))
+        msg.attach(MimeText(body, 'plain'))
         
-        # Send email
-        server = smtplib.SMTP(smtp_server, smtp_port)
+        # Send email with timeout
+        start_time = time.time()
+        server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
         server.starttls()
         server.login(email_user, email_password)
         server.send_message(msg)
         server.quit()
         
-        print(f"Verification email sent to {email}")
+        print(f"Verification email sent to {email} in {time.time() - start_time:.2f}s")
         return True
+        
+    except socket.timeout:
+        print(f"Email timeout for {email}. Verification code: {code}")
+        return False
+    except Exception as e:
+        print(f"Email error for {email}: {e}. Verification code: {code}")
+        return False
         
     except Exception as e:
         print(f"Email error: {e}")
