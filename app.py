@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, redirect, url_for, flash, session
+from flask import Flask, request, jsonify, redirect, url_for, flash, session, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import os
@@ -118,194 +118,6 @@ def verification_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_flash_messages():
-    messages_html = ""
-    categories = {
-        'error': 'danger',
-        'success': 'success', 
-        'warning': 'warning',
-        'info': 'info'
-    }
-    
-    # Get flashed messages from session
-    if '_flashes' in session:
-        flashes = session['_flashes'].copy()
-        for category, message in flashes:
-            alert_class = categories.get(category, 'info')
-            messages_html += f'''
-            <div class="alert alert-{alert_class} alert-dismissible fade show">
-                {message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            '''
-        # Clear the flashes after displaying
-        session['_flashes'] = []
-    
-    return messages_html
-
-# HTML Templates with escaped CSS braces
-login_html = '''
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat App - Login</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-        }}
-        .card {{
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }}
-        .card-body {{
-            padding: 2rem;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h2 class="card-title text-center mb-4">Welcome to Chat App</h2>
-                        {flash_messages}
-                        <form method="POST">
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email Address</label>
-                                <input type="email" class="form-control" id="email" name="email" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">Send Verification Code</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-'''
-
-verify_html = '''
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat App - Verify</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-        }}
-        .card {{
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }}
-        .card-body {{
-            padding: 2rem;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h2 class="card-title text-center mb-4">Verify Your Email</h2>
-                        <p class="text-center">We sent a verification code to <strong>{email}</strong></p>
-                        {flash_messages}
-                        <form method="POST">
-                            <div class="mb-3">
-                                <label for="code" class="form-label">Verification Code</label>
-                                <input type="text" class="form-control" id="code" name="code" maxlength="6" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">Verify</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-'''
-
-chat_html = '''
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Room</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/css/style.css" rel="stylesheet">
-</head>
-<body>
-    <div class="container-fluid vh-100">
-        {flash_messages}
-        
-        <div class="row h-100">
-            <div class="col-md-3 border-end bg-light">
-                <div class="d-flex flex-column h-100">
-                    <div class="p-3 border-bottom">
-                        <h5 class="mb-0">Online Users</h5>
-                    </div>
-                    <div class="flex-grow-1 p-3">
-                        <div id="users-list">
-                            <!-- Users will be populated by JavaScript -->
-                        </div>
-                    </div>
-                    <div class="p-3 border-top">
-                        <a href="/logout" class="btn btn-outline-danger w-100">Logout</a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-9 d-flex flex-column">
-                <div class="p-3 border-bottom">
-                    <h4 class="mb-0">Chat Room</h4>
-                </div>
-                
-                <div id="chat-messages" class="flex-grow-1 p-3">
-                    <!-- Messages will be populated by JavaScript -->
-                </div>
-                
-                <div class="p-3 border-top">
-                    <form id="message-form" enctype="multipart/form-data">
-                        <div class="input-group">
-                            <input type="text" id="message-input" class="form-control" placeholder="Type your message..." maxlength="1000">
-                            <input type="file" id="file-input" class="form-control" style="display: none;" accept="image/*,audio/*,.pdf,.txt,.doc,.docx">
-                            <button type="button" id="file-btn" class="btn btn-outline-secondary">📎</button>
-                            <button type="submit" class="btn btn-primary">Send</button>
-                        </div>
-                        <div id="file-info" class="mt-2" style="display: none;"></div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/chat.js"></script>
-</body>
-</html>
-'''
-
 # Routes
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -317,7 +129,7 @@ def login():
         
         if not email:
             flash('Please enter your email address.', 'error')
-            return login_html.format(flash_messages=get_flash_messages())
+            return render_template('login.html')
         
         user = User.query.filter_by(email=email).first()
         if not user:
@@ -334,14 +146,11 @@ def login():
         
         if email_sent:
             flash('Verification code sent to your email!', 'success')
-        else:
-            flash(f'Email may not have been sent. Your code is: {verification_code}', 'warning')
-            print(f"DEBUG - Verification code for {email}: {verification_code}")
         
         session['verify_email'] = email
         return redirect(url_for('verify'))
     
-    return login_html.format(flash_messages=get_flash_messages())
+    return render_template('login.html')
 
 @app.route('/verify', methods=['GET', 'POST'])
 def verify():
@@ -365,13 +174,13 @@ def verify():
         else:
             flash('Invalid verification code.', 'error')
     
-    return verify_html.format(email=email, flash_messages=get_flash_messages())
+    return render_template('verify.html', email=email)
 
 @app.route('/chat')
 @login_required
 @verification_required
 def chat_room():
-    return chat_html.format(flash_messages=get_flash_messages())
+    return render_template('chat.html')
 
 @app.route('/api/messages')
 @login_required
@@ -475,6 +284,10 @@ def health_check():
 
 # Initialize database
 with app.app_context():
+    db.create_all()
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
     db.create_all()
 
 if __name__ == '__main__':
