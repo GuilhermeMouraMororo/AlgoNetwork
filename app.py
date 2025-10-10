@@ -4,28 +4,27 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 import os
 import secrets
 import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from email.mime.text import MimeText
+from email.mime.multipart import MimeMultipart
 from datetime import datetime
 import uuid
 from functools import wraps
-from dotenv import load_dotenv
 import socket
 import time
 
-
-load_dotenv()  # This loads the .env file
-
 # Initialize Flask app
 app = Flask(__name__)
+
+# Fix database URL for Render
+database_url = os.environ.get('DATABASE_URL', 'sqlite:///chat.db')
+if database_url and database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
-database_url = os.environ.get('DATABASE_URL', 'sqlite:///chat.db')
-if database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 
 # Create upload directories
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'images'), exist_ok=True)
@@ -77,41 +76,7 @@ def send_verification_email(email, code):
         # Set socket timeout to prevent hanging
         socket.setdefaulttimeout(10)
         
-        # Create message@app.route('/', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated and current_user.is_verified:
-        return redirect(url_for('chat_room'))
-    
-    if request.method == 'POST':
-        email = request.form.get('email')
-        
-        if not email:
-            flash('Please enter your email address.', 'error')
-            return login_html.format(flash_messages=get_flash_messages())
-        
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            user = User(email=email)
-            db.session.add(user)
-        
-        verification_code = generate_verification_code()
-        user.verification_code = verification_code
-        user.is_verified = False
-        db.session.commit()
-        
-        # Try to send email, but don't wait too long
-        email_sent = send_verification_email(email, verification_code)
-        
-        if email_sent:
-            flash('Verification code sent to your email!', 'success')
-        else:
-            flash(f'Email may not have been sent. Your code is: {verification_code}', 'warning')
-            print(f"DEBUG - Verification code for {email}: {verification_code}")
-        
-        session['verify_email'] = email
-        return redirect(url_for('verify'))
-    
-    return login_html.format(flash_messages=get_flash_messages())
+        # Create message
         msg = MimeMultipart()
         msg['From'] = email_user
         msg['To'] = email
@@ -138,11 +103,6 @@ def login():
         return False
     except Exception as e:
         print(f"Email error for {email}: {e}. Verification code: {code}")
-        return False
-        
-    except Exception as e:
-        print(f"Email error: {e}")
-        print(f"Failed to send email to {email}. Verification code: {code}")
         return False
 
 def allowed_file(filename):
