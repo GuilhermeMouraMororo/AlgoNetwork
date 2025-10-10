@@ -12,7 +12,11 @@ services:
         fromDatabase:
           name: chat_db
           property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.9.0
 
 databases:
   - name: chat_db
     plan: free
+    databaseName: chat_app
+    user: chat_user
