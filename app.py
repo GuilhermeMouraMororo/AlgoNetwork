@@ -20,9 +20,17 @@ from flask_migrate import Migrate
 app = Flask(__name__)
 
 # Fix database URL for Render
-database_url = os.environ.get('DATABASE_URL', 'sqlite:///chat.db')
-if database_url and database_url.startswith('postgres://'):
+# Force PostgreSQL - no SQLite fallback
+# Force PostgreSQL - no SQLite fallback
+database_url = os.environ.get('DATABASE_URL')
+if not database_url:
+    raise ValueError("DATABASE_URL environment variable is not set")
+
+# Fix common PostgreSQL URL issue
+if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+print(f"Database type: {'PostgreSQL' if 'postgresql' in database_url else 'SQLite'}")
 
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
@@ -47,7 +55,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     is_verified = db.Column(db.Boolean, default=False)
     verification_code = db.Column(db.String(6))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     messages = db.relationship('Message', backref='author', lazy=True)
 
 class Message(db.Model):
@@ -55,7 +63,7 @@ class Message(db.Model):
     content = db.Column(db.Text)
     message_type = db.Column(db.String(20), default='text')
     file_path = db.Column(db.String(500))
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 @login_manager.user_loader
