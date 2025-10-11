@@ -209,13 +209,17 @@ def get_messages():
     messages_data = []
     
     for message in messages:
+        # Convert to Brazil timezone and format for frontend
+        brazil_time = message.timestamp.astimezone(brazil_tz)
+        formatted_timestamp = brazil_time.isoformat()
+        
         messages_data.append({
             'id': message.id,
             'user_email': message.author.email,
             'content': message.content,
             'type': message.message_type,
             'file_path': message.file_path,
-            'timestamp': message.timestamp.isoformat(),
+            'timestamp': formatted_timestamp,
             'is_own': message.user_id == current_user.id
         })
     
