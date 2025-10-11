@@ -20,7 +20,7 @@ from flask_migrate import Migrate
 app = Flask(__name__)
 
 # Fix database URL for Render
-database_url = os.environ.get('DATABASE_URL', 'postgresql://user:password@host:port/database')
+database_url = os.environ.get('DATABASE_URL', 'sqlite:///chat.db')
 if database_url and database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
