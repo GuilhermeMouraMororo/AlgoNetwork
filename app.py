@@ -235,7 +235,7 @@ def send_message():
         
         message = Message(
             user_id=current_user.id,
-            timestamp=datetime.now(brazil_tz)  # Changed this line
+            timestamp=datetime.now(brazil_tz)
         )
         
         if file and file.filename:
@@ -271,6 +271,9 @@ def send_message():
         db.session.add(message)
         db.session.commit()
         
+        # Format the timestamp in Brazil timezone for immediate response
+        formatted_time = message.timestamp.strftime('%d/%m/%Y %H:%M')
+        
         return jsonify({
             'success': True,
             'message': {
@@ -279,13 +282,14 @@ def send_message():
                 'content': message.content,
                 'type': message.message_type,
                 'file_path': message.file_path,
-                'timestamp': message.timestamp.isoformat(),
+                'timestamp': formatted_time,  # Use pre-formatted time
                 'is_own': True
             }
         })
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/users')
 @login_required
