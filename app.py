@@ -20,7 +20,7 @@ from flask_migrate import Migrate
 app = Flask(__name__)
 
 # Fix database URL for Render
-database_url = os.environ.get('DATABASE_URL', 'sqlite:///chat.db')
+database_url = os.environ.get('DATABASE_URL', 'postgresql://user:password@host:port/database')
 if database_url and database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
@@ -286,6 +286,31 @@ def logout():
 
 @app.route('/health')
 def health_check():
+    return 'OK'
+
+@app.route('/debug')
+def debug():
+    user_count = User.query.count()
+    message_count = Message.query.count()
+    return f"Users: {user_count}, Messages: {message_count}, Database URL: {app.config['SQLALCHEMY_DATABASE_URI'][:50]}..."
+
+# Initialize database - safe table creation
+with app.app_context():
+    try:
+        # This will create tables only if they don't exist
+        db.create_all()
+        
+        # Test database connection and tables
+        test_user = User.query.first()
+        print(f"Database connected successfully. Found {User.query.count()} users and {Message.query.count()} messages.")
+        
+    except Exception as e:
+        print(f"Database initialization note: {e}")
+        # This is normal on first deploy or if there are connection issues
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
     return 'OK'
 
 if __name__ == '__main__':
