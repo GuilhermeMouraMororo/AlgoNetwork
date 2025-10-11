@@ -3,8 +3,8 @@ services:
     name: flask-chat-app
     env: python
     plan: starter  # or free, but starter is better
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+    buildCommand: buildCommand: pip install -r requirements.txt && flask db upgrade
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 app:app
     envVars:
       - key: SECRET_KEY
         generateValue: true
