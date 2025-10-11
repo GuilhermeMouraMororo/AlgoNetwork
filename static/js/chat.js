@@ -97,24 +97,22 @@ class ChatApp {
             // Only update if there are new messages
             const latestMessageId = messages.length > 0 ? Math.max(...messages.map(m => m.id)) : 0;
             if (latestMessageId > this.lastMessageId) {
-                // Get current message IDs to avoid duplicates
-                const currentMessageIds = new Set();
-                this.messagesContainer.querySelectorAll('.message').forEach(msg => {
-                    const id = parseInt(msg.dataset.messageId);
-                    if (id) currentMessageIds.add(id);
-                });
+                const previousScroll = this.messagesContainer.scrollTop;
+                const previousHeight = this.messagesContainer.scrollHeight;
                 
-                // Add only new messages
-                messages.forEach(message => {
-                    if (!currentMessageIds.has(message.id)) {
-                        this.addMessage(message);
-                    }
-                });
+                // Clear and rebuild messages
+                this.messagesContainer.innerHTML = '';
+                messages.forEach(message => this.addMessage(message));
                 
                 this.lastMessageId = latestMessageId;
                 
+                // Only scroll to bottom if user was near bottom before update
                 if (this.isNearBottom) {
                     this.scrollToBottom();
+                } else {
+                    // Maintain scroll position relative to content
+                    const newHeight = this.messagesContainer.scrollHeight;
+                    this.messagesContainer.scrollTop = previousScroll + (newHeight - previousHeight);
                 }
             }
         } catch (error) {
@@ -136,8 +134,7 @@ class ChatApp {
     addMessage(message) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${message.is_own ? 'own' : 'other'}`;
-        messageDiv.dataset.messageId = message.id; // Store ID for duplicate checking
-    
+        
         let contentHtml = '';
         
         if (message.type === 'text') {
@@ -204,6 +201,10 @@ class ChatApp {
         }, 2000);
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    new ChatApp();
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     new ChatApp();
