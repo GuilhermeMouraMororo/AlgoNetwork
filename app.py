@@ -11,6 +11,10 @@ import uuid
 from functools import wraps
 import socket
 import time
+from datetime import timezone
+from flask_migrate import Migrate
+
+
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -33,6 +37,7 @@ os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'files'), exist_ok=True)
 
 # Initialize extensions
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -70,7 +75,7 @@ def send_verification_email(email, code):
         
         # If email credentials aren't set, use console logging
         if not all([email_user, email_password]):
-            print(f"Email credentials not set. Verification code for {email}: {code}")
+            print(f"Credenciais de email não ajustadas. Código de verificação para {email}: {code}")
             return True
         
         # Set socket timeout to prevent hanging
@@ -80,10 +85,10 @@ def send_verification_email(email, code):
         msg = MIMEMultipart()
         msg['From'] = email_user
         msg['To'] = email
-        msg['Subject'] = 'Chat App - Verification Code'
+        msg['Subject'] = 'AlgoNET - Código de Verificação'
         
         # Simple text email (faster than HTML)
-        body = f"Your Chat App verification code is: {code}\n\nThis code will expire in 10 minutes."
+        body = f"Seu código de verificação da AlgoNET: {code}\n\nEsse código de verificação irá expirar em 10 minutos."
         
         msg.attach(MIMEText(body, 'plain'))
         
@@ -113,7 +118,7 @@ def verification_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_verified:
-            flash('Please verify your email first.', 'error')
+            flash('Por favor verifique seu email primeiro.', 'error')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -128,7 +133,7 @@ def login():
         email = request.form.get('email')
         
         if not email:
-            flash('Please enter your email address.', 'error')
+            flash('Por favor entre seu endereço de email.', 'error')
             return render_template('login.html')
         
         user = User.query.filter_by(email=email).first()
@@ -145,7 +150,7 @@ def login():
         email_sent = send_verification_email(email, verification_code)
         
         if email_sent:
-            flash('Verification code sent to your email!', 'success')
+            flash('O código de verificação foi enviado ao seu email!', 'success')
         
         session['verify_email'] = email
         return redirect(url_for('verify'))
@@ -169,10 +174,10 @@ def verify():
             db.session.commit()
             login_user(user, remember=True)
             session.pop('verify_email', None)
-            flash('Email verified successfully!', 'success')
+            flash('Email verificado com sucesso!', 'success')
             return redirect(url_for('chat_room'))
         else:
-            flash('Invalid verification code.', 'error')
+            flash('Código de verificação inválido.', 'error')
     
     return render_template('verify.html', email=email)
 
@@ -212,7 +217,8 @@ def send_message():
         
         message = Message(
             user_id=current_user.id,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
+
         )
         
         if file and file.filename:
@@ -237,10 +243,10 @@ def send_message():
                 message.file_path = f'uploads/{upload_folder}/{filename}'
                 message.content = file.filename
             else:
-                return jsonify({'error': 'File type not allowed'}), 400
+                return jsonify({'error': 'Tipo de arquivo não permitido'}), 400
         else:
             if not content.strip():
-                return jsonify({'error': 'Message cannot be empty'}), 400
+                return jsonify({'error': 'Sua mensagem não pode ser vazia'}), 400
             
             message.message_type = 'text'
             message.content = content.strip()
@@ -275,20 +281,12 @@ def get_online_users():
 @login_required
 def logout():
     logout_user()
-    flash('You have been logged out.', 'info')
+    flash('Você saiu da sua conta.', 'info')
     return redirect(url_for('login'))
 
 @app.route('/health')
 def health_check():
     return 'OK'
-
-# Initialize database
-with app.app_context():
-    db.create_all()
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
-    db.create_all()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
