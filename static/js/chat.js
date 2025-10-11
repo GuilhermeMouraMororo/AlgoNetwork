@@ -57,8 +57,13 @@ class ChatApp {
                 this.messageInput.value = '';
                 this.fileInput.value = '';
                 this.fileInfo.style.display = 'none';
+                
+                // Add the message immediately with the correct server-formatted time
                 this.addMessage(result.message);
                 this.scrollToBottom();
+                
+                // Update the lastMessageId to prevent duplicate loading
+                this.lastMessageId = Math.max(this.lastMessageId, result.message.id);
             } else {
                 alert('Error sending message: ' + result.error);
             }
@@ -67,7 +72,7 @@ class ChatApp {
             alert('Error sending message');
         }
     }
-    
+        
     handleFileSelect(e) {
         const file = e.target.files[0];
         if (file) {
@@ -95,6 +100,7 @@ class ChatApp {
                 const previousScroll = this.messagesContainer.scrollTop;
                 const previousHeight = this.messagesContainer.scrollHeight;
                 
+                // Clear and rebuild messages
                 this.messagesContainer.innerHTML = '';
                 messages.forEach(message => this.addMessage(message));
                 
