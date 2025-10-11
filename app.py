@@ -12,12 +12,18 @@ from functools import wraps
 import socket
 import time
 from datetime import timezone
+from datetime import datetime
+import pytz
 from flask_migrate import Migrate
 
 
 
 # Initialize Flask app
 app = Flask(__name__)
+
+
+
+brazil_tz = pytz.timezone('America/Fortaleza')
 
 # Fix database URL for Render
 # Force PostgreSQL - no SQLite fallback
@@ -55,7 +61,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     is_verified = db.Column(db.Boolean, default=False)
     verification_code = db.Column(db.String(6))
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(brazil_tz))
     messages = db.relationship('Message', backref='author', lazy=True)
 
 class Message(db.Model):
@@ -63,7 +69,7 @@ class Message(db.Model):
     content = db.Column(db.Text)
     message_type = db.Column(db.String(20), default='text')
     file_path = db.Column(db.String(500))
-    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(brazil_tz))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 @login_manager.user_loader
@@ -225,8 +231,7 @@ def send_message():
         
         message = Message(
             user_id=current_user.id,
-            timestamp=datetime.now(timezone.utc)
-
+            timestamp=datetime.now(brazil_tz)  # Changed this line
         )
         
         if file and file.filename:
