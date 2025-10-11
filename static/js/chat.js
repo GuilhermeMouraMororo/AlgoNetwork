@@ -158,24 +158,12 @@ class ChatApp {
             `;
         }
         
-        // Updated time display for Brazil timezone
-        // For full date + time display
-    const messageDate = new Date(message.timestamp);
-    const formattedDateTime = messageDate.toLocaleString('pt-BR', {
-        timeZone: 'America/Fortaleza',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    });
-    
-    messageDiv.innerHTML = `
-        <div class="message-header">${this.escapeHtml(message.user_email)}</div>
-        ${contentHtml}
-        <div class="message-time">${formattedDateTime}</div>
-    `;
+        // Use the pre-formatted timestamp from server
+        messageDiv.innerHTML = `
+            <div class="message-header">${this.escapeHtml(message.user_email)}</div>
+            ${contentHtml}
+            <div class="message-time">${message.timestamp}</div>
+        `;
         
         this.messagesContainer.appendChild(messageDiv);
     }
