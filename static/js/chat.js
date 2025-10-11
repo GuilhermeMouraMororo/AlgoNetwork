@@ -205,7 +205,3 @@ class ChatApp {
 document.addEventListener('DOMContentLoaded', () => {
     new ChatApp();
 });
-
-document.addEventListener('DOMContentLoaded', () => {
-    new ChatApp();
-});
