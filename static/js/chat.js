@@ -10,7 +10,6 @@ class ChatApp {
         
         this.lastMessageId = 0;
         this.isNearBottom = true;
-        this.loadedMessageIds = new Set(); // Track loaded message IDs
         this.initEventListeners();
         this.loadMessages();
         this.loadUsers();
@@ -58,14 +57,8 @@ class ChatApp {
                 this.messageInput.value = '';
                 this.fileInput.value = '';
                 this.fileInfo.style.display = 'none';
-                
-                // Add the message immediately with the correct server-formatted time
                 this.addMessage(result.message);
                 this.scrollToBottom();
-                
-                // Update the lastMessageId and track this message ID
-                this.lastMessageId = Math.max(this.lastMessageId, result.message.id);
-                this.loadedMessageIds.add(result.message.id);
             } else {
                 alert('Error sending message: ' + result.error);
             }
@@ -74,7 +67,7 @@ class ChatApp {
             alert('Error sending message');
         }
     }
-        
+    
     handleFileSelect(e) {
         const file = e.target.files[0];
         if (file) {
@@ -102,29 +95,18 @@ class ChatApp {
                 const previousScroll = this.messagesContainer.scrollTop;
                 const previousHeight = this.messagesContainer.scrollHeight;
                 
-                // Track if we added any new messages
-                let addedNewMessages = false;
-                
-                // Add only new messages that we haven't loaded yet
-                messages.forEach(message => {
-                    if (!this.loadedMessageIds.has(message.id)) {
-                        this.addMessage(message);
-                        this.loadedMessageIds.add(message.id);
-                        addedNewMessages = true;
-                    }
-                });
+                this.messagesContainer.innerHTML = '';
+                messages.forEach(message => this.addMessage(message));
                 
                 this.lastMessageId = latestMessageId;
                 
-                // Only adjust scroll if we actually added new messages
-                if (addedNewMessages) {
-                    if (this.isNearBottom) {
-                        this.scrollToBottom();
-                    } else {
-                        // Maintain scroll position relative to content
-                        const newHeight = this.messagesContainer.scrollHeight;
-                        this.messagesContainer.scrollTop = previousScroll + (newHeight - previousHeight);
-                    }
+                // Only scroll to bottom if user was near bottom before update
+                if (this.isNearBottom) {
+                    this.scrollToBottom();
+                } else {
+                    // Maintain scroll position relative to content
+                    const newHeight = this.messagesContainer.scrollHeight;
+                    this.messagesContainer.scrollTop = previousScroll + (newHeight - previousHeight);
                 }
             }
         } catch (error) {
@@ -146,7 +128,6 @@ class ChatApp {
     addMessage(message) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${message.is_own ? 'own' : 'other'}`;
-        messageDiv.dataset.messageId = message.id; // Store message ID in DOM
         
         let contentHtml = '';
         
